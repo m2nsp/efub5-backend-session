@@ -1,0 +1,74 @@
+name: CI/CD with Docker
+
+# week9 브랜치에 push할 경우 워크플로우 실행
+on:
+  push:
+    branches: ["week9"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: 'zulu'
+
+      # repository secrets에 올린 application.yml 빌드 시 생성
+      - name: Make application.yml
+        run: |
+          mkdir ./blog/src/main/resources
+          cd ./blog/src/main/resources
+          touch ./application.yml
+          echo "${{ secrets.APPPLICATION }}" > ./application.yml
+
+      - name: Gradle Caching
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build with Gradle
+        run: |
+          cd ./blog
+          chmod +x ./gradlew
+          ./gradlew build -x test
+
+      # ID, PW를 이용해 Docker Hub에 로그인
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      #Docker 이미지 빌드 후 푸시
+      - name: Docker build & push
+        uses: docker/build-push-action@v2
+        with:
+          context: ./blog             # 빌드 컨텍스트 지정
+          file: ./blog/Dockerfile     # Dockerfile 경로 지정
+          platforms: linux/arm64/v8   # 빌드 플랫폼 지정
+          push: true                  # 빌드 후 푸시 여부
+          tags: ${{ secrets.DOCKER_REPO }}:latest
+
+      # SSH 사용하여 EC2에 명령 전달
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          envs: GITHUB_SHA
+          script: |
+            sudo docker rm -f $(sudo docker ps -qa)
+            sudo docker pull ${{ secrets.DOCKER_REPO }}:latest
+            sudo docker run -d -p 8080:8080 ${{ secrets.DOCKER_REPO }}:latest
+            sudo docker image prune -f
+          

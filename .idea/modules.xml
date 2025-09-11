@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/blog.main.iml" filepath="$PROJECT_DIR$/.idea/modules/blog.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/efub5-backend-session.iml" filepath="$PROJECT_DIR$/.idea/efub5-backend-session.iml" />
     </modules>
   </component>
 </project>
