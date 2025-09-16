@@ -19,7 +19,11 @@ public class AccountController {
     private final AccountService accountService;
 
     // Redis에서 id로 이메일 조회
-
+    @GetMapping("/redis/{accountId}")
+    @ResponseStatus(value = HttpStatus.OK)
+    public String getEmailByIdfromRedis(@PathVariable Long accountId) {
+        return accountService.findEmailByIdFromRedis(accountId);
+    }
 
 
 
