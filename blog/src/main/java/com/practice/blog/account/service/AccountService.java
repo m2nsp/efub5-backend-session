@@ -5,7 +5,9 @@ import com.practice.blog.account.dto.response.CreateAccountResponseDto;
 import com.practice.blog.account.dto.request.BioUpdateRequestDto;
 import com.practice.blog.account.dto.request.CreateAccountRequestDto;
 import com.practice.blog.account.entity.Account;
+import com.practice.blog.account.entity.AccountDocument;
 import com.practice.blog.account.entity.AccountStatus;
+import com.practice.blog.account.repository.AccountDocumentRepository;
 import com.practice.blog.account.repository.AccountsRepository;
 //import com.practice.blog.account.entity.AccountDocument;
 //import com.practice.blog.account.repository.AccountDocumentRepository;
@@ -35,6 +37,8 @@ import java.util.concurrent.TimeUnit;
 public class AccountService {
 
     private final AccountsRepository accountsRepository;
+    // Mongo DB용 repository
+    private final AccountDocumentRepository accountDocumentRepository;
 
     private final RedisTemplate<String, Object> redisTemplate;  //Redis와 통신
     private HashOperations<String, String, Object> hashOperations;  //Redis에 저장할 Hash 객체 선언
@@ -64,20 +68,17 @@ public class AccountService {
         // 만료 시간 설정 (30분)
         redisTemplate.expire(redisKey, 30, TimeUnit.MINUTES);
 
+        //MongoDB에 저장
+        AccountDocument accountDocument = AccountDocument.builder()
+                .id(savedAccount.getAccountId().toString())
+                .email(savedAccount.getEmail())
+                .nickname(savedAccount.getNickname())
+                .password(savedAccount.getPassword())
+                .build();
+
+        accountDocumentRepository.save(accountDocument);
         return CreateAccountResponseDto.from(savedAccount);
     }
-
-
-
-    // 회원 수정 (bio, nickname)
-    @Transactional
-    public AccountResponseDto updateAccount(Long accountId, BioUpdateRequestDto requestDto) {
-        Account account = findByAccountId(accountId);
-        account.updateBio(requestDto.getBio());
-        account.updateNickname(requestDto.getNickname());
-        return AccountResponseDto.from(account);
-    }
-
 
     // 회원 물리적 삭제
     @Transactional
@@ -91,7 +92,12 @@ public class AccountService {
         //MySQL에서 삭제
         accountsRepository.delete(account);
 
-        accountsRepository.delete(account);
+        //MongoDB에서 삭제
+        String _id = accountId.toString();
+        if(!accountDocumentRepository.existsById(_id)) {
+            throw new BlogException(ExceptionCode.ACCOUNT_NOT_FOUND);
+        }
+        accountDocumentRepository.deleteById(_id);
     }
 
     // Redis에서 ID로 이메일 조회
@@ -117,23 +123,38 @@ public class AccountService {
         return email;
     }
 
-    // 프로필(자기소개) 수정
+    // 프로필(자기소개) 수정 (bio, nickname)
     @Transactional
     public AccountResponseDto updateAccount(Long accountId, BioUpdateRequestDto requestDto) {
         Account account = findByAccountId(accountId);
-        Account.updateBio(requestDto.getBio());
-        Account.updateNickname(requestDto.getNickname());
+        account.updateBio(requestDto.getBio());
+        account.updateNickname(requestDto.getNickname());
 
         // Redis에서 닉네임 업데이트 (bio는 Redis에 저장하지 않으므로 생략)
         String redisKey = ACCOUNT_CACHE_KEY + accountId;
         hashOperations.put(redisKey, "nickname", account.getNickname());
+
+        //MongoDB에서 닉네임 업에이트
+        String _id = accountId.toString();
+        AccountDocument accountDocument = accountDocumentRepository.findById(_id)
+                .orElseThrow(() -> new BlogException(ExceptionCode.ACCOUNT_NOT_FOUND));
+
+        accountDocument.update(account.getNickname());
+        accountDocumentRepository.save(accountDocument);
 
         return AccountResponseDto.from(account);
     }
 
 
     // MongoDB에서 ID로 닉네임 조회
+    @Transactional(readOnly = true)
+    public String findNicknameByIdFromMongo(Long id) {
+        String _id = id.toString();
+        AccountDocument accountDocument = accountDocumentRepository.findById(_id)
+                .orElseThrow(() -> new BlogException(ExceptionCode.ACCOUNT_NOT_FOUND));
 
+        return accountDocument.getNickname();
+    }
 
     /*----------------------------------------------------*/
 
