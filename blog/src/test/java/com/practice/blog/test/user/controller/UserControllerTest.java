@@ -37,17 +37,34 @@ class UserControllerTest {
     @Test
     void 사용자_생성() throws Exception {
         // given
+        String name = "김이화";
+        String email = "efub@test.com";
 
+        UserRequestDTO requestDTO = UserRequestDTO.builder()
+                .name(name)
+                .email(email)
+                .build();
 
-
+        //requestDto를 객체 -> 문자열
+        String requestBody = objectMapper.writeValueAsString(requestDTO);
 
         // userService.save() 호출 시 가짜 User 반환하도록 설정
-
+        given(userService.save(any(UserRequestDTO.class)))
+                .willReturn(User.builder()
+                        .id(1L)
+                        .name(name)
+                        .email(email)
+                        .build());
 
 
 
         // when & then
-
+        mockMvc.perform(post("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value(name))
+                .andExpect(jsonPath("$.email").value(email));
 
 
     }
