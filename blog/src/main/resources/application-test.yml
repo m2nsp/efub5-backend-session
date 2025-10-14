@@ -1,0 +1,25 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: utf-8
+      force: true # 무슨일이 있어도 이렇게 인코딩하겠다
+spring:
+  datasource:
+    url: jdbc:h2:mem:test;MODE=MySQL # h2의 문법을 mysql로 맞추겠다.
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      '[hibernate.default_batch_fetch_size]': 100
+      '[hibernate.format_sql]': true
+    show-sql: true
+    output:
+      ansi:
+        enabled: always
