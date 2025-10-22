@@ -1,6 +1,7 @@
 package com.practice.blog.account.service;
 
 import com.practice.blog.account.entity.Account;
+import com.practice.blog.account.repository.AccountsRepository;
 import com.practice.blog.global.utils.OAuth2UserInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +22,11 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CustomOAuth2UserService {
+public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequest, OAuth2User>{
+    private final AccountsRepository accountsRepository;
+
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+
         //OAuth2 사용자 정보 로드
         OAuth2User oAuth2User = new DefaultOAuth2UserService().loadUser(userRequest);
 
@@ -33,6 +37,9 @@ public class CustomOAuth2UserService {
      * 사용자 생성 메서드
      * OAuth2로그인은 비밀번호가 필요하지 않으므로 ""
      */
+
+        //DB에서 해당 사용자 조회 -> 없으면 새로 생성
+        Account account = accountsRepository.findByEmail(oAuth2UserInfo.getEmail()).orElseGet(()->createAccount(oAuth2UserInfo));
 
         // 사용자 속성 생성
         Map<String, Object> attributes = new HashMap<>(oAuth2User.getAttributes());

@@ -26,7 +26,8 @@ public class TokenProvider {
     @Value("${jwt.secret.Key}")
     private String secretKey;
     // 토큰 만료시간 설정
-
+    private static Long accessTokenExpiration = 1000*60*60L; // 1시간 = 1000(ms->s) * 60(s->m) * 60(m->h)
+    private static Long refreshTokenExpiration = 1000*60*60*25*14L; // 2주 = 1000(ms->s) * 60(s->m) * 60(m->h) * 24(h->하루) * 14(2주)
 
     // 토큰에 포함할 기본 정보와 클레임 키값 설정
     private static final String AUTH_CLAIM = "auth";
@@ -38,7 +39,6 @@ public class TokenProvider {
      * AccessToken 생성 메소드
      * 사용자 이메일 정보를 포함해 AccessToken 생성
      */
-    private static Long accessTokenExpiration = 1000*60*60L;    // 1시간 = 1000(ms -> s) * 60(s -> m) * 60(m -> h)
 
     public String createAccessToken(Account account) {
         Date now = new Date();
@@ -56,7 +56,6 @@ public class TokenProvider {
     /**
      * RefreshToken 생성 메소드
      */
-    private static Long refreshTokenExpiration = 1000*60*60*25*14L;
 
     public String createRefreshToken(Account account) {
         Date now = new Date();
@@ -78,7 +77,7 @@ public class TokenProvider {
      * 리프레시토큰 만료 시간(refreshTokenExpiration)을 만료시간으로 정해 자동으로 삭제되도록 설정
      */
     public void saveRefreshToken(Long userId, String refreshToken) {
-        redisTemplate.opsForValue().set(userId.toString(), refreshToken, DurationofMillis(refreshTokenExpiration));
+        redisTemplate.opsForValue().set(userId.toString(), refreshToken, Duration.ofMillis(refreshTokenExpiration));
     }
 
 
