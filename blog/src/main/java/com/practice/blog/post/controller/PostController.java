@@ -34,7 +34,13 @@ public class PostController {
     }
 
     // 게시글 검색
-
+    @GetMapping("/search")
+    public ResponseEntity<List<PostSearchResponseDto>> searchPost(
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "writer", required = false) String writerNickname
+    ) {
+        return ResponseEntity.ok(postService.searchPost(keyword, writerNickname));
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<PostResponse> getPost(@PathVariable("id") Long id){
